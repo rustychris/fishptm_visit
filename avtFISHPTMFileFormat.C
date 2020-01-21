@@ -242,8 +242,8 @@ avtFISHPTMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int time
   // // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
   // avtCentering cent = AVT_NODECENT;
   // 
-  // // Here's the call that tells the meta-data object that we have a var:
-  // AddScalarVarToMetaData(md, varname, mesh_for_this_var, cent);
+  // Here's the call that tells the meta-data object that we have a var:
+  AddScalarVarToMetaData(md, "status", meshname, AVT_NODECENT);
 
   debug1 << "FISHPTM: end of populate database metadata" << endl;
 }
@@ -327,8 +327,28 @@ avtFISHPTMFileFormat::GetMesh(int timestate, const char *meshname)
 vtkDataArray *
 avtFISHPTMFileFormat::GetVar(int timestate, const char *varname)
 {
-  // start with just geometry
-  EXCEPTION1(InvalidVariableException, varname);
+  if ( strcmp(varname,"status")==0 ) {
+    // terribly inefficient, but it's just not the time to write this well.
+    int32_t part_id;
+    double xyz[3];
+    int32_t active;
+    
+    activate_step(timestate);
+
+    vtkFloatArray *rv = vtkFloatArray::New();
+    rv->SetNumberOfTuples(current_step_header.Npart);
+  
+    for(int i=0;i<current_step_header.Npart;i++) {
+      file.read((char*)&part_id,sizeof(part_id));
+      file.read((char*)xyz, sizeof(xyz));
+      file.read((char*)&active,sizeof(active));
+      rv->SetTuple1(i,active);
+    }
+    return rv;
+  } else {
+    // start with just geometry
+    EXCEPTION1(InvalidVariableException, varname);
+  }
 
     //
     // If you do have a scalar variable, here is some code that may be helpful.
